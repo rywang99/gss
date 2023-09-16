@@ -157,9 +157,10 @@ class Enhancer:
             enhanced_recordings = []
             enhanced_supervisions = []
             offset = 0
+            tmp_recording_id = recording_id#.replace("_Far","").replace("_Middle","")
             for cut in orig_cuts:
                 save_path = Path(
-                    f"{recording_id}-{speaker}-{round(100*cut.start):06d}_{round(100*cut.end):06d}.flac"
+                    f"{speaker}-{tmp_recording_id}-{int(100*cut.start):06d}_{int(100*cut.end):06d}.wav"
                 )
                 if force_overwrite or not (out_dir / save_path).exists():
                     st = compute_num_samples(offset, self.sampling_rate)
@@ -170,7 +171,7 @@ class Enhancer:
                         file=str(out_dir / save_path),
                         data=x_hat_cut.transpose(),
                         samplerate=self.sampling_rate,
-                        format="FLAC",
+                        format="WAV",
                     )
                     # Update offset for the next cut
                     offset = add_durations(
@@ -215,9 +216,10 @@ class Enhancer:
 
                 file_exists = []
                 if not force_overwrite:
+                    tmp_recording_id = batch.recording_id#.replace("_Far","").replace("_Middle","")
                     for cut in batch.orig_cuts:
                         save_path = Path(
-                            f"{batch.recording_id}-{batch.speaker}-{round(100*cut.start):06d}_{round(100*cut.end):06d}.flac"
+                            f"{batch.speaker}-{tmp_recording_id}-{int(100*cut.start):06d}_{int(100*cut.end):06d}.wav"
                         )
                         file_exists.append((out_dir / save_path).exists())
 
@@ -227,7 +229,8 @@ class Enhancer:
 
                 # Sometimes the segment may be large and cause OOM issues in CuPy. If this
                 # happens, we increasingly chunk it up into smaller segments until it can
-                # be processed without breaking.
+                # be processed without breaking. 
+                # # line 234-258 enhance
                 num_chunks = 1
                 while True:
                     try:
@@ -360,14 +363,6 @@ class Enhancer:
             x_hat = x_hat[np.newaxis, :]
 
         # Trim x_hat to original length of cut
-        if right_context > 0:
-            x_hat = x_hat[:, left_context:-right_context]
-        elif right_context == 0:
-            x_hat = x_hat[:, left_context:]
-        else:
-            logging.warning(
-                f"Right context is less than zero. Only left context is used."
-            )
-            x_hat = x_hat[:, left_context:]
+        x_hat = x_hat[:, left_context:-right_context]
 
         return x_hat
